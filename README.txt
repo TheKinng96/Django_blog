@@ -434,3 +434,90 @@ SETTING UP html
     </p>
     {{ post.body|linebreaks }}
   {% endblock %}
+
+MAKING a better content page
+
+  When you start adding content to your blog, you might easily reach the point where tens or hundreds of posts are stored in your database. Instead of displaying all the posts on a single page, you may want to split the list of posts across several pages. This can be achieved through pagination. You can define the number of posts you want to be displayed per page and retrieve the posts that correspond to the page requested by the user. Django has a built-in pagination class that allows you to manage paginated data easily.
+
+  Edit the views.py file of the blog application to import the Django paginator classes and modify the post_list view, as follows:
+
+  from django.core.paginator import Paginator, EmptyPage,\
+                                    PageNotAnInteger
+  def post_list(request):
+      object_list = Post.published.all()
+      paginator = Paginator(object_list, 3) # 3 posts in each page
+      page = request.GET.get('page')
+      try:
+          posts = paginator.page(page)
+      except PageNotAnInteger:
+          # If page is not an integer deliver the first page
+          posts = paginator.page(1)
+      except EmptyPage:
+          # If page is out of range deliver last page of results
+          posts = paginator.page(paginator.num_pages)
+      return render(request,
+                    'blog/post/list.html',
+                     {'page': page,
+                      'posts': posts})
+
+  This is how pagination works:
+
+  You instantiate the Paginator class with the number of objects that you want to display on each page.
+  You get the page GET parameter, which indicates the current page number.
+  You obtain the objects for the desired page by calling the page() method of Paginator.
+  If the page parameter is not an integer, you retrieve the first page of results. If this parameter is a number higher than the last page of results, you retrieve the last page.
+  You pass the page number and retrieved objects to the template.
+
+  The pagination template expects a Page object in order to render the previous and next links, and to display the current page and total pages of results. Let's return to the blog/post/list.html template and include the pagination.html template at the bottom of the {% content %} block, as follows:
+
+  {% block content %}
+    ...
+    {% include "pagination.html" with page=posts %}
+  {% endblock %}
+
+  Since the Page object you are passing to the template is called posts, you include the pagination template in the post list template, passing the parameters to render it correctly. You can follow this method to reuse your pagination template in the paginated views of different models.
+
+Class-based views
+
+  Class-based views are an alternative way to implement views as Python objects instead of functions. Since a view is a callable that takes a web request and returns a web response, you can also define your views as class methods. Django provides base view classes for this. All of them inherit from the View class, which handles HTTP method dispatching and other common functionalities.
+
+  Class-based views offer advantages over function-based views for some use cases. They have the following features:
+
+    Organizing code related to HTTP methods, such as GET, POST, or PUT, in separate methods, instead of using conditional branching
+    Using multiple inheritance to create reusable view classes (also known as mixins)
+
+  You can take a look at an introduction to class-based views at https://docs.djangoproject.com/en/3.0/topics/class-based-views/intro/.
+
+  You will change your post_list view into a class-based view to use the generic ListView offered by Django. This base view allows you to list objects of any kind.
+
+  Edit the views.py file of your blog application and add the following code:
+
+  from django.views.generic import ListView
+  class PostListView(ListView):
+    queryset = Post.published.all()
+    context_object_name = 'posts'
+    paginate_by = 3
+    template_name = 'blog/post/list.html'
+
+  This class-based view is analogous to the previous post_list view. In the preceding code, you are telling ListView to do the following things:
+    Use a specific QuerySet instead of retrieving all objects. Instead of defining a queryset attribute, you could have specified model = Post and Django would have built the generic Post.objects.all() QuerySet for you.
+    Use the context variable posts for the query results. The default variable is object_list if you don't specify any context_object_name.
+    Paginate the result, displaying three objects per page.
+    Use a custom template to render the page. If you don't set a default template, ListView will use blog/post_list.html.
+
+  Now open the urls.py file of your blog application, comment the preceding post_list URL pattern, and add a new URL pattern using the PostListView class, as follows:
+
+    urlpatterns = [
+      # post views
+      # path('', views.post_list, name='post_list'),
+      path('', views.PostListView.as_view(), name='post_list'),
+      path('<int:year>/<int:month>/<int:day>/<slug:post>/',
+          views.post_detail,
+          name='post_detail'),
+    ]
+
+  In order to keep pagination working, you have to use the right page object that is passed to the template. Django's ListView generic view passes the selected page in a variable called page_obj, so you have to edit your post/list.html template accordingly to include the paginator using the right variable, as follows:
+
+    {% include "pagination.html" with page=page_obj %}
+
+  Open http://127.0.0.1:8000/blog/ in your browser and verify that everything works the same way as with the previous post_list view. This is a simple example of a class-based view that uses a generic class provided by Django.
