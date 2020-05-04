@@ -136,5 +136,130 @@ Activating the app
     then run: python manage.py migrate
     this will sync the database with the new model
 
+BUILDING A BLOG APP
+    we created a model and it will need us to have a simple administration site to manage
+    create a superuser
+
+    django.contrib.admin has been included the function
+
+    run: python manage.py createsuperuser
+    *the password you entered is entered, just invisible
+
+    go to the localhost:8000/admin to login
+
+    Groups and Users are from django.contrib.auth
+
+    To show our app on the admin site:
+
+    go to the admin.py file and write
+        from .models import your_model
+        admin.site.register(your_model)
+    refresh your admin site and you are now ready to add a new post!
+
+CUSTOMISING THE ADMIN display
+
+    in the admin.py, below the admin.register(your_model)
+    write down:
+    *remember to replace the site.register!
+
+    @admin.register(your_model)
+    class PostAdmin(admin.ModelAdmin):
+    list_display = ('title', 'slug', 'author', 'publish', 'status')
+
+    You are telling the Django administration site that your model is registered in the site using a custom class that inherits from ModelAdmin. In this class, you can include information about how to display the model in the site and how to interact with it.
+
+    The list_display attribute allows you to set the fields of your model that you want to display on the administration object list page. The @admin.register() decorator performs the same function as the admin.site.register() function that you replaced, registering the ModelAdmin class that it decorates.
+
+    Let's customize the admin model with some more options, using the following code:
+
+    list_filter = ('status', 'created', 'publish', 'author')
+    search_fields = ('title', 'body')
+    prepopulated_fields = {'slug': ('title',)}
+    raw_id_fields = ('author',)
+    date_hierarchy = 'publish'
+    ordering = ('status', 'publish')
+
+    You can see that the fields displayed on the post list page are the ones you specified in the list_display attribute. The list page now includes a right sidebar that allows you to filter the results by the fields included in the list_filter attribute.
+
+    A search bar has appeared on the page. This is because you have defined a list of searchable fields using the search_fields attribute. Just below the search bar, there are navigation links to navigate through a date hierarchy; this has been defined by the date_hierarchy attribute. You can also see that the posts are ordered by STATUS and PUBLISH columns by default. You have specified the default sorting criteria using the ordering attribute.
+
+    Next, click on the ADD POST link. You will also note some changes here. As you type the title of a new post, the slug field is filled in automatically. You have told Django to prepopulate the slug field with the input of the title field using the prepopulated_fields attribute.
+
+CREATING objects
+
+    try to add objects by the shell
+    run: python manage.py shell
+
+    then: run the codes below separately
+    >>> from django.contrib.auth.models import User
+    >>> from blog.models import Post
+    >>> user = User.objects.get(username='the name you registered as a super user')
+    >>> post = Post(title='Another post',
+    ...             slug='another-post',
+    ...             body='Post body.',
+    ...             author=user)
+    >>> post.save()
+
+    *the shell will not execute your code before you ')' it, feel free to use enter and tab
+
+    the logic: 
+        First, you retrieve the user object with the username admin
+        Then, you create a Post instance with a custom title, slug, and body, and set the user that you previously retrieved as the author of the post
+        Finally, you save the Post object to the database using the save() method
+        The preceding action performs an INSERT SQL statement behind the scenes. You have seen how to create an object in memory first and then persist it to the database, but you can also create the object and persist it into the database in a single operation using the create() method
+            Post.objects.create(title='One more post',
+                    slug='one-more-post',
+                    body='Post body.',
+                    author=user)
+
+    UPDATING objects
+    >>> your_post_name.title = 'New title'
+    >>> your_post_name.save()
+
+    Retrieving objects
+        Post.objects.get(post_name) -- to get a specific post
+        to get all:
+            First you need to assign a variable
+            all_posts = Post.objects.all()
+
+            then: 
+            all_posts
+
+        filter() :
+            Post.objects.filter(publish__year=2020)
+            Post.objects.filter(publish__year=2020, author__username='username')
+        
+        multiple filter() :
+        >>> Post.objects.filter(publish__year=2020) \
+        >>>             .filter(author__username='admin')
+
+        exclude():
+        >>> Post.objects.filter(publish__year=2020) \
+        >>>             .exclude(title__startswith='Why')
+
+        order_by():
+        >>> Post.objects.order_by('title') [accending-order]
+        >>> Post.objects.order_by('-title') [descending-order]
+
+        DELETING object
+        >>> post = Post.objects.get(id=1)
+        >>> post.delete()
+
+CREATING model manager
+
+    objects is the default manager of every model that retrieves all objects in the database. However, you can also define custom managers for your models. You will create a custom manager to retrieve all posts with the published status.
+    
+    2 ways to create: 
+        add extra manager methods to an existing manager
+            provides you with a QuerySet API such as Post.objects.my_manager()
+
+        create a new manager by modifying the initial QuerySet that the manager returns
+             provides you with Post.my_manager.all()
+             allow you to retrieve posts using Post.published.all()
+
+CREATING view
+
+    after set up the model and admin site, now is ready to set up the  view site from the html
+
 
 
