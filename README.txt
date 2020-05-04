@@ -1,11 +1,11 @@
 NOTES
 
 ABOUT VENV
-    Pros of using venv: 
+    Pros of using venv:
 
         Using the Python venv module to create isolated Python environments allows you to use different package versions for different projects, which is far more practical than installing Python packages system-wide. Another advantage of using venv is that you won't need any administration privileges to install Python packages.
 
-    create venv - 
+    create venv -
         python3 has a light module of virtualenv
         run: python -m venv project_names
 
@@ -23,7 +23,7 @@ ABOUT PROJECT MAIN FILES
             asgi.py: This is the configuration to run your project as ASGI, the emerging Python standard for asynchronous web servers and applications.
 
             settings.py: This indicates settings and configuration for your project and contains initial default settings.
-            
+
             urls.py: This is the place where your URL patterns live. Each URL defined here is mapped to a view.
 
             wsgi.py: This is the configuration to run your project as a Web Server Gateway Interface (WSGI) application.
@@ -37,9 +37,9 @@ The Idea of Migrate
     makemigrations - to sync the db with our applications
 
 ABOUT manage.py runserver
-    only intended for development and is not suitable for production use. 
+    only intended for development and is not suitable for production use.
 
-    in a production environment, 
+    in a production environment,
     run it as a WSGI application using a web server, such as Apache, Gunicorn, or uWSGI, or as an ASGI application using a server like Uvicorn or Daphne.
 
     https://docs.djangoproject.com/en/3.0/howto/deployment/wsgi/.
@@ -202,7 +202,7 @@ CREATING objects
 
     *the shell will not execute your code before you ')' it, feel free to use enter and tab
 
-    the logic: 
+    the logic:
         First, you retrieve the user object with the username admin
         Then, you create a Post instance with a custom title, slug, and body, and set the user that you previously retrieved as the author of the post
         Finally, you save the Post object to the database using the save() method
@@ -222,13 +222,13 @@ CREATING objects
             First you need to assign a variable
             all_posts = Post.objects.all()
 
-            then: 
+            then:
             all_posts
 
         filter() :
             Post.objects.filter(publish__year=2020)
             Post.objects.filter(publish__year=2020, author__username='username')
-        
+
         multiple filter() :
         >>> Post.objects.filter(publish__year=2020) \
         >>>             .filter(author__username='admin')
@@ -248,8 +248,8 @@ CREATING objects
 CREATING model manager
 
     objects is the default manager of every model that retrieves all objects in the database. However, you can also define custom managers for your models. You will create a custom manager to retrieve all posts with the published status.
-    
-    2 ways to create: 
+
+    2 ways to create:
         add extra manager methods to an existing manager
             provides you with a QuerySet API such as Post.objects.my_manager()
 
@@ -261,5 +261,176 @@ CREATING view
 
     after set up the model and admin site, now is ready to set up the  view site from the html
 
+    write the following code to the view.py of your_app
 
+    from django.shortcuts import render, get_object_or_404
+    from .models import Post
+    def post_list(request):
+        posts = Post.published.all()
+        return render(request,
+                    'blog/post/list.html',
+                    {'posts': posts})
 
+    You just created your first Django view. The post_list view takes the request object as the only parameter. This parameter is required by all views. In this view, you retrieve all the posts with the published status using the published manager that you created previously.
+
+    Finally, you use the render() shortcut provided by Django to render the list of posts with the given template. This function takes the request object, the template path, and the context variables to render the given template. It returns an HttpResponse object with the rendered text (normally HTML code). The render() shortcut takes the request context into account, so any variable set by the template context processors is accessible by the given template. Template context processors are just callables that set variables into the context.
+
+    lets create a second view to display a single post.
+
+    def post_detail(request, year, month, day, post):
+    post = get_object_or_404(Post, slug=post,
+                                   status='published',
+                                   publish__year=year,
+                                   publish__month=month,
+                                   publish__day=day)
+    return render(request,
+                  'blog/post/detail.html',
+                  {'post': post})
+
+    This is the post detail view. This view takes the year, month, day, and post arguments to retrieve a published post with the given slug and date. Note that when you created the Post model, you added the unique_for_date parameter to the slug field. This ensures that there will be only one post with a slug for a given date, and thus, you can retrieve single posts using the date and slug. In the detail view, you use the get_object_or_404() shortcut to retrieve the desired post. This function retrieves the object that matches the given parameters or an HTTP 404 (not found) exception if no object is found. Finally, you use the render() shortcut to render the retrieved post using a template.
+
+ADDING URL pattern for views
+
+    URL patterns allow you to map URLs to views. A URL pattern is composed of a string pattern, a view, and, optionally, a name that allows you to name the URL project-wide. Django runs through each URL pattern and stops at the first one that matches the requested URL. Then, Django imports the view of the matching URL pattern and executes it, passing an instance of the HttpRequest class and the keyword or positional arguments.
+
+    Create a urls.py file in the directory of the blog application and add the following lines to it:
+
+    from django.urls import path
+    from .views import post_detail,post_list
+
+    app_name = 'blog'
+    urlpatterns = [
+        # post views
+        path('', post_list, name='post_list'),
+        path('<int:year>/<int:month>/<int:day>/<slug:post>/',
+            post_detail,
+            name='post_detail'),
+    ]
+
+    In the preceding code, you define an application namespace with the app_name variable. This allows you to organize URLs by application and use the name when referring to them. You define two different patterns using the path() function. The first URL pattern doesn't take any arguments and is mapped to the post_list view. The second pattern takes the following four arguments and is mapped to the post_detail view:
+
+    year: Requires an integer
+    month: Requires an integer
+    day: Requires an integer
+    post: Can be composed of words and hyphens
+
+    You use angle brackets to capture the values from the URL. Any value specified in the URL pattern as <parameter> is captured as a string. You use path converters, such as <int:year>, to specifically match and return an integer and <slug:post> to specifically match a slug. You can see all path converters provided by Django at https://docs.djangoproject.com/en/3.0/topics/http/urls/#path-converters.
+
+    If using path() and converters isn't sufficient for you, you can use re_path() instead to define complex URL patterns with Python regular expressions. You can learn more about defining URL patterns with regular expressions at https://docs.djangoproject.com/en/3.0/ref/urls/#django.urls.re_path. If you haven't worked with regular expressions before, you might want to take a look at the Regular Expression HOWTO located at https://docs.python.org/3/howto/regex.html first.
+
+    Next, you have to include the URL patterns of the blog application in the main URL patterns of the project.
+
+    Edit the urls.py file located in the mysite directory of your project and make it look like the following:
+
+    from django.urls import path, include
+    from django.contrib import admin
+    urlpatterns = [
+        path('admin/', admin.site.urls),
+        path('blog/', include('blog.urls', namespace='blog')),
+    ]
+
+    The new URL pattern defined with include refers to the URL patterns defined in the blog application so that they are included under the blog/ path. You include these patterns under the namespace blog. Namespaces have to be unique across your entire project. Later, you will refer to your blog URLs easily by using the namespace followed by a colon and the URL name, for example, blog:post_list and blog:post_detail. You can learn more about URL namespaces at https://docs.djangoproject.com/en/3.0/topics/http/urls/#url-namespaces.
+
+    Canonical URL
+    A canonical URL is the preferred URL for a resource. You may have different pages in your site where you display posts, but there is a single URL that you use as the main URL for a blog post. The convention in Django is to add a get_absolute_url() method to the model that returns the canonical URL for the object.
+
+    You can use the post_detail URL that you have defined in the preceding section to build the canonical URL for Post objects. For this method, you will use the reverse() method, which allows you to build URLs by their name and pass optional parameters. You can learn more about the URLs utility functions at https://docs.djangoproject.com/en/3.0/ref/urlresolvers/.
+
+    Edit the models.py file of the blog application and add the following code:
+
+    from django.urls import reverse
+    class Post(models.Model):
+        # ...
+        def get_absolute_url(self):
+            return reverse('blog:post_detail',
+                        args=[self.publish.year,
+                                self.publish.month,
+                                self.publish.day, self.slug])
+
+    You will use the get_absolute_url() method in your templates to link to specific posts.
+
+SETTING UP html
+
+  You have created views and URL patterns for the blog application. URL patterns map URLs to views, and views decide which data gets returned to the user. Templates define how the data is displayed; they are usually written in HTML in combination with the Django template language. You can find more information about the Django template language at https://docs.djangoproject.com/en/3.0/ref/templates/language/.
+
+  Let's add templates to your application to display posts in a user-friendly manner.
+
+  Create the following directories and files inside your blog application directory:
+
+  templates/
+    blog/
+        base.html
+        post/
+            list.html
+            detail.html
+  The preceding structure will be the file structure for your templates. The base.html file will include the main HTML structure of the website and divide the content into the main content area and a sidebar. The list.html and detail.html files will inherit from the base.html file to render the blog post list and detail views, respectively.
+
+  Django has a powerful template language that allows you to specify how data is displayed. It is based on template tags, template variables, and template filters:
+
+    Template tags control the rendering of the template and look like {% tag %}
+    Template variables get replaced with values when the template is rendered and look like {{ variable }}
+    Template filters allow you to modify variables for display and look like {{ variable|filter }}.
+
+    You can see all built-in template tags and filters at https://docs.djangoproject.com/en/3.0/ref/templates/builtins/.
+
+  Edit the base.html file and add the following code:
+
+  {% load static %}
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>{% block title %}{% endblock %}</title>
+    <link href="{% static "css/blog.css" %}" rel="stylesheet">
+  </head>
+  <body>
+    <div id="content">
+      {% block content %}
+      {% endblock %}
+    </div>
+    <div id="sidebar">
+      <h2>My blog</h2>
+      <p>This is my blog.</p>
+    </div>
+  </body>
+  </html>
+
+  {% load static %} tells Django to load the static template tags that are provided by the django.contrib.staticfiles application, which is contained in the INSTALLED_APPS setting. After loading them, you are able to use the {% static %} template tag throughout this template. With this template tag, you can include the static files, such as the blog.css file, which you will find in the code of this example under the static/ directory of the blog application. Copy the static/ directory from the code that comes along with this chapter into the same location as your project to apply the CSS styles to the templates. You can find the directory's contents at https://github.com/PacktPublishing/Django-3-by-Example/tree/master/Chapter01/mysite/blog/static.
+
+  You can see that there are two {% block %} tags. These tell Django that you want to define a block in that area. Templates that inherit from this template can fill in the blocks with content. You have defined a block called title and a block called content.
+
+  Let's edit the post/list.html file and make it look like the following:
+
+    {% extends "blog/base.html" %}
+    {% block title %}My Blog{% endblock %}
+    {% block content %}
+    <h1>My Blog</h1>
+    {% for post in posts %}
+      <h2>
+        <a href="{{ post.get_absolute_url }}">
+          {{ post.title }}
+        </a>
+      </h2>
+      <p class="date">
+        Published {{ post.publish }} by {{ post.author }}
+      </p>
+      {{ post.body|truncatewords:30|linebreaks }}
+    {% endfor %}
+    {% endblock %}
+
+  With the {% extends %} template tag, you tell Django to inherit from the blog/base.html template. Then, you fill the title and content blocks of the base template with content. You iterate through the posts and display their title, date, author, and body, including a link in the title to the canonical URL of the post.
+
+  In the body of the post, you apply two template filters: truncatewords truncates the value to the number of words specified, and linebreaks converts the output into HTML line breaks. You can concatenate as many template filters as you wish; each one will be applied to the output generated by the preceding one.
+
+  Open the shell and execute the python manage.py runserver command to start the development server. Open http://127.0.0.1:8000/blog/ in your browser; you will see everything running. Note that you need to have some posts with the Published status to show them here.
+
+  Next, edit the detail.html file:
+
+  {% extends "blog/base.html" %}
+  {% block title %}{{ post.title }}{% endblock %}
+  {% block content %}
+    <h1>{{ post.title }}</h1>
+    <p class="date">
+      Published {{ post.publish }} by {{ post.author }}
+    </p>
+    {{ post.body|linebreaks }}
+  {% endblock %}
