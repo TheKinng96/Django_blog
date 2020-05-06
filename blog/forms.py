@@ -15,5 +15,5 @@ class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
         fields = ('name', 'email', 'body')
-
+ 
 # Django introspects the model and builds the form dynamically
